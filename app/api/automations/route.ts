@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
+
 const createSchema = z.object({
   name: z.string().min(1),
   triggerType: z.enum(["DM", "COMMENT"]),
