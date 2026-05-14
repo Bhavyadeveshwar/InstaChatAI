@@ -1,0 +1,84 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #6c47ff;
+  --brand-glow: rgba(108, 71, 255, 0.35);
+  --surface: #0f0f12;
+  --surface-card: #18181e;
+  --surface-border: #26262f;
+  --text-primary: #f4f4f6;
+  --text-muted: #7c7c8e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: "DM Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 3px;
+}
+
+/* Glass card */
+.glass {
+  background: rgba(24, 24, 30, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--surface-border);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #fff 30%, var(--brand));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Brand glow button */
+.btn-brand {
+  background: var(--brand);
+  box-shadow: 0 0 20px var(--brand-glow);
+  transition: all 0.2s ease;
+}
+.btn-brand:hover {
+  box-shadow: 0 0 32px var(--brand-glow);
+  transform: translateY(-1px);
+}
+
+/* Card hover */
+.card-hover {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.card-hover:hover {
+  border-color: rgba(108, 71, 255, 0.4);
+  box-shadow: 0 0 24px rgba(108, 71, 255, 0.08);
+}
+
+/* Noise overlay */
+.noise::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}

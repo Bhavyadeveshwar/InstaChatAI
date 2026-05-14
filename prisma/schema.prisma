@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  instagramAccount InstagramAccount?
+  automations      Automation[]
+  subscription     Subscription?
+}
+
+model InstagramAccount {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  instagramId     String   @unique
+  username        String
+  accessToken     String
+  tokenExpiresAt  DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Automation {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  active      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trigger     Trigger?
+  listener    Listener?
+  posts       Post[]
+  dmlogs      DmLog[]
+}
+
+model Trigger {
+  id           String      @id @default(cuid())
+  automationId String      @unique
+  type         TriggerType // COMMENT | DM
+  keywords     String[]
+
+  automation   Automation  @relation(fields: [automationId], references: [id], onDelete: Cascade)
+}
+
+model Listener {
+  id           String       @id @default(cuid())
+  automationId String       @unique
+  type         ListenerType // MESSAGE | SMART_AI
+  message      String?      // used if type = MESSAGE
+  prompt       String?      // system prompt if type = SMART_AI
+  commentReply String?      // optional public comment reply
+
+  automation   Automation   @relation(fields: [automationId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id           String     @id @default(cuid())
+  automationId String
+  instagramId  String     // Instagram media ID
+  caption      String?
+  mediaUrl     String?
+  createdAt    DateTime   @default(now())
+
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+}
+
+model DmLog {
+  id           String     @id @default(cuid())
+  automationId String
+  senderId     String     // Instagram user ID
+  messages     Json       // array of {role, content, timestamp}
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@unique([automationId, senderId])
+}
+
+model Subscription {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  plan       Plan     @default(FREE)
+  stripeId   String?
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum TriggerType {
+  COMMENT
+  DM
+}
+
+enum ListenerType {
+  MESSAGE
+  SMART_AI
+}
+
+enum Plan {
+  FREE
+  PRO
+}
