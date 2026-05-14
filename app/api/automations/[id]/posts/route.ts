@@ -2,6 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -38,7 +40,6 @@ export async function DELETE(
 
   const { postId } = await req.json();
 
-  // Verify ownership
   const automation = await db.automation.findFirst({
     where: { id: params.id, userId },
   });
