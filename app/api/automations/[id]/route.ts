@@ -14,7 +14,7 @@ export async function GET(
 
   const automation = await db.automation.findFirst({
     where: { id: params.id, userId },
-    include: { trigger: true, listener: true, posts: true, dmlogs: true },
+    include: { trigger: true, listener: true,  },
   });
 
   if (!automation) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -72,7 +72,7 @@ export async function PATCH(
 
   const automation = await db.automation.findFirst({
     where: { id: params.id },
-    include: { trigger: true, listener: true, posts: true },
+    include: { trigger: true, listener: true, },
   });
   return NextResponse.json(automation);
 }
