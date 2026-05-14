@@ -6,83 +6,163 @@ import axios from "axios";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const { userId } = auth();
-  if (!userId) return NextResponse.redirect(new URL("/auth/sign-in", req.url));
+  const { userId } = await auth();
+
+  if (!userId) {
+    return NextResponse.redirect(
+      new URL("/auth/sign-in", req.url)
+    );
+  }
 
   const { searchParams } = new URL(req.url);
+
   const code = searchParams.get("code");
   const error = searchParams.get("error");
 
   if (error || !code) {
+    console.error("Instagram OAuth Error:", error);
+
     return NextResponse.redirect(
-      new URL("/dashboard/integrations?error=instagram_denied", req.url)
+      new URL(
+        "/dashboard/integrations?error=instagram_denied",
+        req.url
+      )
     );
   }
 
   try {
-    // Exchange code for short-lived token
-    const tokenRes = await axios.post(
-      "https://api.instagram.com/oauth/access_token",
-      new URLSearchParams({
-        client_id: process.env.INSTAGRAM_APP_ID!,
-        client_secret: process.env.INSTAGRAM_APP_SECRET!,
-        grant_type: "authorization_code",
-        redirect_uri: process.env.INSTAGRAM_REDIRECT_URI!,
-        code,
-      }),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-    );
+    /**
+     * STEP 1
+     * Exchange auth code for access token
+     */
 
-    const { access_token: shortToken, user_id: instagramId } = tokenRes.data;
-
-    // Exchange for long-lived token
-    const longTokenRes = await axios.get(
-      "https://graph.instagram.com/access_token",
+    const tokenRes = await axios.get(
+      "https://graph.facebook.com/v22.0/oauth/access_token",
       {
         params: {
-          grant_type: "ig_exchange_token",
-          client_secret: process.env.INSTAGRAM_APP_SECRET!,
-          access_token: shortToken,
+          client_id: process.env.INSTAGRAM_APP_ID,
+          client_secret: process.env.INSTAGRAM_APP_SECRET,
+          redirect_uri: process.env.INSTAGRAM_REDIRECT_URI,
+          code,
         },
       }
     );
 
-    const { access_token, expires_in } = longTokenRes.data;
+    const accessToken = tokenRes.data.access_token;
 
-    // Get username
-    const profileRes = await axios.get(
-      `https://graph.instagram.com/${instagramId}`,
-      { params: { fields: "id,username", access_token } }
+    /**
+     * STEP 2
+     * Get Facebook Pages connected to user
+     */
+
+    const pagesRes = await axios.get(
+      "https://graph.facebook.com/v22.0/me/accounts",
+      {
+        params: {
+          access_token: accessToken,
+        },
+      }
     );
 
-    const { username } = profileRes.data;
-    const expiresAt = new Date(Date.now() + expires_in * 1000);
+    const pages = pagesRes.data.data;
 
-    // Upsert Instagram account
+    if (!pages || pages.length === 0) {
+      throw new Error("No Facebook Pages found");
+    }
+
+    /**
+     * STEP 3
+     * Find page connected to Instagram Business Account
+     */
+
+    let instagramAccount = null;
+
+    for (const page of pages) {
+      const pageDetailsRes = await axios.get(
+        `https://graph.facebook.com/v22.0/${page.id}`,
+        {
+          params: {
+            fields: "instagram_business_account",
+            access_token: page.access_token,
+          },
+        }
+      );
+
+      if (pageDetailsRes.data.instagram_business_account) {
+        instagramAccount = {
+          pageAccessToken: page.access_token,
+          instagramBusinessId:
+            pageDetailsRes.data.instagram_business_account.id,
+        };
+
+        break;
+      }
+    }
+
+    if (!instagramAccount) {
+      throw new Error(
+        "No Instagram Business Account connected to any Facebook Page"
+      );
+    }
+
+    /**
+     * STEP 4
+     * Get Instagram profile details
+     */
+
+    const profileRes = await axios.get(
+      `https://graph.facebook.com/v22.0/${instagramAccount.instagramBusinessId}`,
+      {
+        params: {
+          fields: "id,username,profile_picture_url",
+          access_token: instagramAccount.pageAccessToken,
+        },
+      }
+    );
+
+    const profile = profileRes.data;
+
+    /**
+     * STEP 5
+     * Save account in database
+     */
+
     await db.instagramAccount.upsert({
-      where: { userId },
+      where: {
+        userId,
+      },
+
       create: {
         userId,
-        instagramId: String(instagramId),
-        username,
-        accessToken: access_token,
-        tokenExpiresAt: expiresAt,
+        instagramId: profile.id,
+        username: profile.username,
+        accessToken: instagramAccount.pageAccessToken,
       },
+
       update: {
-        instagramId: String(instagramId),
-        username,
-        accessToken: access_token,
-        tokenExpiresAt: expiresAt,
+        instagramId: profile.id,
+        username: profile.username,
+        accessToken: instagramAccount.pageAccessToken,
       },
     });
 
     return NextResponse.redirect(
-      new URL("/dashboard/integrations?success=instagram_connected", req.url)
+      new URL(
+        "/dashboard/integrations?success=instagram_connected",
+        req.url
+      )
     );
-  } catch (err) {
-    console.error("Instagram OAuth error:", err);
+  } catch (err: any) {
+    console.error(
+      "Instagram Business Login Error:",
+      err?.response?.data || err.message
+    );
+
     return NextResponse.redirect(
-      new URL("/dashboard/integrations?error=instagram_failed", req.url)
+      new URL(
+        "/dashboard/integrations?error=instagram_failed",
+        req.url
+      )
     );
   }
 }

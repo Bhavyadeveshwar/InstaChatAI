@@ -74,11 +74,20 @@ export async function getInstagramPosts(accessToken: string) {
 }
 
 export function buildInstagramAuthUrl() {
+  const baseUrl = "https://www.facebook.com/v22.0/dialog/oauth";
+
   const params = new URLSearchParams({
-    client_id: process.env.INSTAGRAM_APP_ID!,
-    redirect_uri: process.env.INSTAGRAM_REDIRECT_URI!,
-    scope: "instagram_basic,instagram_manage_messages,instagram_manage_comments,pages_show_list",
+    client_id: process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID!,
+    redirect_uri:
+      process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI!,
+    scope: [
+      "instagram_business_basic",
+      "instagram_business_manage_messages",
+      "pages_show_list",
+      "pages_read_engagement",
+    ].join(","),
     response_type: "code",
   });
-  return `https://www.instagram.com/oauth/authorize?${params.toString()}`;
+
+  return `${baseUrl}?${params.toString()}`;
 }
