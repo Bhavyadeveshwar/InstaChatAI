@@ -17,7 +17,7 @@ const createSchema = z.object({
 });
 
 export async function GET() {
-  const { userId } = await auth();
+  const { userId } = auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const automations = await db.automation.findMany({
@@ -30,7 +30,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  const { userId } =  auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Create user in DB if they don't exist yet
